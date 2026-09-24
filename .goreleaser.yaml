@@ -1,0 +1,170 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+version: 2
+
+project_name: scout-mcp
+
+# Replace an existing GitHub release on re-run, so a release can be retried
+# after fixing a publishing secret.
+release:
+  # Named rather than read from the git remote, so `goreleaser check`
+  # passes in a checkout that has none.
+  github:
+    owner: sebastienrousseau
+    name: scout-mcp
+  mode: replace
+  header: |
+    Full notes are in
+    [CHANGELOG.md](https://github.com/sebastienrousseau/scout-mcp/blob/main/CHANGELOG.md).
+
+    **Verify what you downloaded:**
+
+    ```bash
+    gh attestation verify <asset> --owner sebastienrousseau
+    ```
+
+    Every asset is covered by `checksums.txt`, which is signed
+    (`checksums.txt.sigstore.json`), and SLSA build provenance ships as
+    `checksums.txt.intoto.jsonl`. scout_check needs scout itself; the
+    container image carries it.
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    # -trimpath removes the build machine's absolute paths from the binary,
+    # and the pinned timestamp makes two builds of the same commit
+    # byte-identical, which is what lets a third party check provenance
+    # rather than trust it.
+    flags:
+      - -trimpath
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/scout-mcp
+    binary: scout-mcp
+    ldflags:
+      - -s -w -X main.Version={{.Version}}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+      - SECURITY.md
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+
+# The image ships the binaries built above, on scout's release image, so
+# the container is the whole thing: scout-mcp and the scout it runs. See
+# the Dockerfile for the base pin.
+dockers_v2:
+  - id: scout-mcp
+    dockerfile: Dockerfile
+    images:
+      - ghcr.io/sebastienrousseau/scout-mcp
+    tags:
+      # latest is guarded on prerelease, so a prerelease never moves the tag
+      # most people pull by default.
+      - "{{ .Version }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      # The MCP Registry reads this from the image config to verify that
+      # the publisher of server.json owns the image. It must equal
+      # server.json's name.
+      io.modelcontextprotocol.server.name: "io.github.sebastienrousseau/scout-mcp"
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.description: "scout's MCP server diagnostics as read-only MCP tools, over stdio"
+      org.opencontainers.image.url: "https://github.com/sebastienrousseau/scout-mcp"
+      org.opencontainers.image.source: "https://github.com/sebastienrousseau/scout-mcp"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.licenses: "GPL-3.0-only"
+    # Labels live on each platform image; a registry showing the multi-arch
+    # tag reads the index, which has none unless they are set here too.
+    annotations:
+      io.modelcontextprotocol.server.name: "io.github.sebastienrousseau/scout-mcp"
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.description: "scout's MCP server diagnostics as read-only MCP tools, over stdio"
+      org.opencontainers.image.source: "https://github.com/sebastienrousseau/scout-mcp"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.licenses: "GPL-3.0-only"
+
+# Keyless cosign signing of the image, with the sigstore OIDC identity of
+# the GitHub Actions runner. Verify:
+#   cosign verify \
+#     --certificate-identity-regexp='https://github.com/sebastienrousseau/scout-mcp/.github/workflows/release.yml@refs/tags/.*' \
+#     --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+#     ghcr.io/sebastienrousseau/scout-mcp:<version>
+docker_signs:
+  - id: cosign-oidc
+    cmd: cosign
+    args:
+      - sign
+      - --yes
+      - '${artifact}'
+    # No `artifacts:` key on purpose: images built by dockers_v2 are the
+    # empty default, and naming one of the old values (images, manifests)
+    # would sign nothing and report success.
+    output: true
+
+checksum:
+  name_template: 'checksums.txt'
+
+# Keyless cosign signature over checksums.txt as a Sigstore bundle. Verify:
+#   cosign verify-blob --bundle checksums.txt.sigstore.json \
+#     --certificate-identity-regexp 'https://github.com/sebastienrousseau/scout-mcp/.*' \
+#     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+#     checksums.txt
+signs:
+  - cmd: cosign
+    signature: '${artifact}.sigstore.json'
+    args:
+      - sign-blob
+      - '--bundle=${signature}'
+      - '${artifact}'
+      - '--yes'
+    artifacts: checksum
+    output: true
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^feat(\([^)]*\))?!?:'
+      order: 0
+    - title: Fixes
+      regexp: '^fix(\([^)]*\))?!?:'
+      order: 1
+    - title: Security and dependencies
+      regexp: '^(sec|deps|chore\(deps\)|chore\(actions\))'
+      order: 2
+    - title: Other
+      order: 99
+  filters:
+    exclude:
+      - '^Merge pull request'
+      - '^Merge branch'
+      - '^docs:'
+      - '^test:'
+      - '^chore: '

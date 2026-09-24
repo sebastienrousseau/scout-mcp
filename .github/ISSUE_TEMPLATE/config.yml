@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/sebastienrousseau/scout-mcp/security/advisories/new
+    about: Report privately. Do not open a public issue for a security problem.
+  - name: Question or idea
+    url: https://github.com/sebastienrousseau/scout-mcp/discussions
+    about: For anything that is not a bug report or a concrete feature request.
+  - name: A verdict scout got wrong
+    url: https://github.com/sebastienrousseau/scout/issues/new/choose
+    about: scout-mcp relays scout's report; a wrong finding is scout's to fix.

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.sebastienrousseau/scout-mcp",
+  "title": "scout",
+  "description": "Evaluate an MCP server with scout and verify scout attestations, from inside the agent. Read-only.",
+  "version": "0.0.5",
+  "repository": {
+    "url": "https://github.com/sebastienrousseau/scout-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/sebastienrousseau/scout-mcp",
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/sebastienrousseau/scout-mcp:0.0.5",
+      "runtimeHint": "docker",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "SCOUT_MCP_ALLOW",
+          "description": "Hosts scout_check may evaluate besides loopback, comma-separated; a leading dot allows subdomains. Inside the container, loopback is the container itself.",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

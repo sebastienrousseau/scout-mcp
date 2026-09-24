@@ -1,0 +1,230 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, go ${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: ["go.mod", "stable"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go from go.mod
+        if: matrix.go == 'go.mod'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Set up latest stable Go
+        if: matrix.go == 'stable'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+
+      # internal/runner's tests are //go:build !windows: they stand in a
+      # shell script for scout. On Windows the package builds and reports
+      # "[no test files]", which is expected.
+      - name: Test
+        run: go test ./... -cover
+
+  race:
+    name: Race & Shuffled Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Race detector, randomised order
+        env:
+          GOTOOLCHAIN: auto
+        run: go test -race -shuffle=on -count=1 ./...
+
+  coverage:
+    name: Coverage Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Every package at or above 85% statement coverage
+        env:
+          GOTOOLCHAIN: auto
+          THRESHOLD: '85'
+        run: |
+          set -euo pipefail
+          go test -count=1 -coverprofile=coverage.out ./... 2>&1 | tee coverage.log
+          failed=0
+          # "ok  <pkg>  <time>  coverage: NN.N% of statements"
+          while read -r line; do
+            pkg="$(echo "${line}" | awk '{print $2}')"
+            # A package with no statements reports "[no statements]" and
+            # has nothing to gate; the failing grep must not end the loop.
+            pct="$(echo "${line}" | grep -oE 'coverage: [0-9.]+%' | grep -oE '[0-9.]+' || true)"
+            [ -z "${pct}" ] && continue
+            # The entry point is main(), which wires signals, flags and the
+            # process exit around run(); run() is tested, and main() has no
+            # behaviour of its own to cover.
+            case "${pkg}" in */cmd/scout-mcp) continue ;; esac
+            if awk -v p="${pct}" -v t="${THRESHOLD}" 'BEGIN { exit !(p < t) }'; then
+              echo "::error::${pkg} is at ${pct}%, below the ${THRESHOLD}% gate"
+              failed=1
+            else
+              echo "${pkg}: ${pct}%"
+            fi
+          done < <(grep -E '^ok .*coverage:' coverage.log || true)
+          exit "${failed}"
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Formatting is canonical
+        env:
+          GOTOOLCHAIN: auto
+        run: |
+          set -euo pipefail
+          unformatted="$(gofmt -l .)"
+          if [ -n "${unformatted}" ]; then
+            echo "::error::gofmt would change:"; echo "${unformatted}"; exit 1
+          fi
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        env:
+          GOTOOLCHAIN: auto
+        with:
+          version: v2.13.2
+          args: ./...
+
+  vulncheck:
+    name: Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: govulncheck
+        env:
+          GOTOOLCHAIN: auto
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  checks:
+    name: Repository Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: The server answers the handshake and lists its tools
+        env:
+          GOTOOLCHAIN: auto
+        run: make smoke
+      - name: server.json validates against the registry schema it names
+        run: make server-json CHECK_JSONSCHEMA='pipx run check-jsonschema'
+      - name: This repository's row in the family manifest is true
+        run: make family
+      - name: The Dockerfile builds on scout's image for its version
+        run: make digest
+      - name: Version Lockstep
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make lockstep
+
+  # scout evaluates scout-mcp over stdio, with scout built at the version
+  # this repository is in lockstep with. The only check allowed to fail is
+  # supply.provenance, which judges how the binary was built rather than
+  # how the server behaves: a CI build is not a release build.
+  dogfood:
+    name: scout evaluates scout-mcp
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go from go.mod
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Build scout at the lockstep version, and scout-mcp
+        run: |
+          set -euo pipefail
+          ver="$(grep -Eo '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | head -1 | tr -d '#[] ')"
+          go install "github.com/sebastienrousseau/scout/cmd/scout@v${ver}"
+          go build -o scout-mcp ./cmd/scout-mcp
+      - name: Score at least 90, nothing failing but supply.provenance
+        env:
+          FLOOR: '90'
+        run: |
+          set -euo pipefail
+          scout="$(go env GOPATH)/bin/scout"
+          rc=0
+          "${scout}" check --stdio --rps 0 --no-color --output json -- ./scout-mcp --scout "${scout}" > report.json || rc=$?
+          # 0 is all clear and 2 is a failing check; both carry a report.
+          if [ "${rc}" -ne 0 ] && [ "${rc}" -ne 2 ]; then
+            echo "::error::scout exited ${rc} without a report"; exit 1
+          fi
+          score="$(jq -r '.score.total' report.json)"
+          failing="$(jq -r '[.phases[] | (.findings // [])[] | select(.status == "fail") | .id] - ["supply.provenance"] | join(", ")' report.json)"
+          echo "scout scored scout-mcp ${score}/100 ($(jq -r '.score.grade' report.json))"
+          failed=0
+          if awk -v s="${score}" -v f="${FLOOR}" 'BEGIN { exit !(s < f) }'; then
+            echo "::error::score ${score} is below ${FLOOR}"; failed=1
+          fi
+          if [ -n "${failing}" ]; then
+            echo "::error::failing checks: ${failing}"; failed=1
+          fi
+          exit "${failed}"
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dogfood-report
+          path: report.json
+          if-no-files-found: ignore
+          retention-days: 7

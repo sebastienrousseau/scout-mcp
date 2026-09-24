@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+version: 2
+updates:
+  # One direct dependency, scout-reporting, which moves in lockstep with
+  # scout; this also keeps the toolchain directive current.
+  #
+  # The Dockerfile's base image is deliberately not here. It is scout's
+  # own release image, pinned by digest, and it moves when this repository
+  # releases at scout's new version — not when a bot notices a new tag.
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(deps)"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(actions)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

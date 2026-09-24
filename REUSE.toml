@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Machine-readable licensing, per the REUSE specification. Every source file
+# carries an SPDX header and scripts/spdx_sweep.go fails the build when one
+# does not; this file covers what a header cannot.
+
+version = 1
+SPDX-PackageName = "scout-mcp"
+SPDX-PackageSupplier = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+SPDX-PackageDownloadLocation = "https://github.com/sebastienrousseau/scout-mcp"
+
+# Go module metadata, the registry listing and repository configuration:
+# formats that take no comments.
+[[annotations]]
+path = ["go.mod", "go.sum", "server.json", ".gitignore", ".github/CODEOWNERS"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+SPDX-License-Identifier = "GPL-3.0-only"

@@ -1,0 +1,120 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+# The version rule, rule 2: a scout release propagates here automatically.
+# scout's release workflow fires repository_dispatch with the version and
+# the multi-arch image digest; this moves the Dockerfile onto that image,
+# moves every version pin, opens a changelog section, and raises a pull
+# request. Commits are made through the API so GitHub signs them.
+name: Sync with a scout release
+
+on:
+  repository_dispatch:
+    types: [scout-release]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The scout release to sync with, as vX.Y.Z"
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  sync:
+    name: Pin the release's image and open the pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve the version and the image digest
+        id: rel
+        env:
+          DISPATCHED_VERSION: ${{ github.event.client_payload.version }}
+          DISPATCHED_DIGEST: ${{ github.event.client_payload.image_digest }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version="${DISPATCHED_VERSION:-${INPUT_VERSION}}"
+          [[ "${version}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version must be vX.Y.Z, got '${version}'"; exit 1; }
+          digest="${DISPATCHED_DIGEST:-}"
+          if [[ -z "${digest}" ]]; then
+            # Fetched to a file and parsed from it: a download piped into an
+            # interpreter reads as download-then-run to Scorecard.
+            curl -fsSL "https://ghcr.io/token?scope=repository:sebastienrousseau/scout:pull" -o "${RUNNER_TEMP}/ghcr-token.json"
+            token=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["token"])' "${RUNNER_TEMP}/ghcr-token.json")
+            digest=$(curl -fsSI -H "Authorization: Bearer ${token}" \
+              -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
+              "https://ghcr.io/v2/sebastienrousseau/scout/manifests/${version#v}" \
+              | tr -d '\r' | awk 'tolower($1) == "docker-content-digest:" { print $2 }')
+          fi
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::no image digest for ${version}"; exit 1; }
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
+
+      - name: Rewrite the pins and the changelog
+        id: edit
+        env:
+          VERSION: ${{ steps.rel.outputs.version }}
+          DIGEST: ${{ steps.rel.outputs.digest }}
+        run: |
+          set -euo pipefail
+          ver="${VERSION#v}"
+          if grep -Eq "^## \[${ver}\]" CHANGELOG.md; then
+            echo "already at ${VERSION}"; echo "changed=false" >> "${GITHUB_OUTPUT}"; exit 0
+          fi
+          # The image builds on scout's image for this release: digest and version move together.
+          sed -i -E "s|^FROM ghcr.io/sebastienrousseau/scout@sha256:[0-9a-f]{64}$|FROM ghcr.io/sebastienrousseau/scout@${DIGEST}|; s|^ARG SCOUT_VERSION=[0-9.]+$|ARG SCOUT_VERSION=${ver}|" Dockerfile
+          sed -i -E "s#(sebastienrousseau/scout(-mcp)?/cmd/scout(-mcp)?)@v[0-9]+\.[0-9]+\.[0-9]+#\1@${VERSION}#g; s#ghcr\.io/sebastienrousseau/scout-mcp:[0-9]+\.[0-9]+\.[0-9]+#ghcr.io/sebastienrousseau/scout-mcp:${ver}#g" README.md docs/*.md
+          today=$(date -u +%Y-%m-%d)
+          python3 - "$ver" "$today" "$DIGEST" <<'PY'
+          import json, re, sys
+          ver, today, digest = sys.argv[1:]
+          s = json.load(open("server.json"))
+          s["version"] = ver
+          for p in s.get("packages", []):
+              if p.get("registryType") == "oci":
+                  p["identifier"] = re.sub(r":[0-9.]+$", ":" + ver, p["identifier"])
+          open("server.json", "w").write(json.dumps(s, indent=2) + "\n")
+          c = open("CHANGELOG.md").read()
+          entry = (f"## [{ver}] — {today}\n\n### Changed\n\n- **In lockstep with scout {ver}.** The image builds on "
+                   f"`ghcr.io/sebastienrousseau/scout@{digest}`, the multi-arch image scout's release published for {ver}, and every "
+                   "install line and the registry listing name the release. Opened by the sync workflow on the release's dispatch; "
+                   "scout's own changelog says what changed in the diagnostic.\n\n")
+          c = c.replace("## [Unreleased]\n\n", "## [Unreleased]\n\n" + entry, 1)
+          c = re.sub(r"\[Unreleased\]: (.*)/compare/v[0-9.]+\.\.\.HEAD", rf"[Unreleased]: \1/compare/v{ver}...HEAD\n[{ver}]: \1/releases/tag/v{ver}", c)
+          open("CHANGELOG.md", "w").write(c)
+          PY
+          scripts/verify-release-versions.sh "${VERSION}"
+          echo "changed=true" >> "${GITHUB_OUTPUT}"
+          git diff --stat
+
+      - name: Commit through the API and open the pull request
+        if: steps.edit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.rel.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          branch="sync/${VERSION}"
+          base=$(git rev-parse HEAD)
+          gh api --method POST "repos/${REPO}/git/refs" -f ref="refs/heads/${branch}" -f sha="${base}" >/dev/null
+          # One API commit per changed file: each is signed by GitHub, which
+          # is what the signed-commit rule asks for and a runner cannot do.
+          for f in $(git diff --name-only); do
+            sha=$(gh api "repos/${REPO}/contents/${f}?ref=${branch}" --jq .sha)
+            gh api --method PUT "repos/${REPO}/contents/${f}" \
+              -f message="chore: pin the scout ${VERSION} image in ${f}" \
+              -f content="$(base64 -w0 "${f}")" -f sha="${sha}" -f branch="${branch}" >/dev/null
+          done
+          gh pr create --base main --head "${branch}" \
+            --title "chore: sync with scout ${VERSION}" \
+            --body "Opened by the sync workflow on scout's release dispatch. Builds on scout's ${VERSION} image by digest, moves every install line and the registry listing to ${VERSION}, and opens the changelog section. CI's digest and lockstep checks are the review."

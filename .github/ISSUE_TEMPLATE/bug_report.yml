@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+name: Bug report
+description: A tool that misbehaved, a host that cannot talk to the server, or a result that is wrong or unsafe
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If this is a security issue — scout reaching a host that is not on the
+        allowlist, a credential sent, a mutating tool invoked — **stop** and
+        report it privately through
+        [GitHub's private vulnerability reporting](https://github.com/sebastienrousseau/scout-mcp/security/advisories/new)
+        instead. See [SECURITY.md](https://github.com/sebastienrousseau/scout-mcp/blob/main/SECURITY.md).
+
+        A finding scout got wrong about the server it evaluated belongs in
+        [scout's issues](https://github.com/sebastienrousseau/scout/issues).
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The tool call's arguments and the result, or the host's error. Paste them, not a summary.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versions
+      description: What `scout_version` returned, or `scout-mcp --version` and `scout version`.
+    validations:
+      required: true
+
+  - type: input
+    id: host
+    attributes:
+      label: MCP host
+      description: The host and its version, and whether scout-mcp runs as a binary or as the container image.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - WSL2
+    validations:
+      required: true

@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+cff-version: 1.2.0
+title: "scout-mcp: scout's MCP server diagnostics as read-only MCP tools"
+message: "If you use this software, please cite it using these metadata."
+type: software
+authors:
+  - family-names: Rousseau
+    given-names: Sebastien
+    email: sebastian.rousseau@gmail.com
+repository-code: "https://github.com/sebastienrousseau/scout-mcp"
+abstract: >-
+  A Model Context Protocol server over stdio that exposes scout, the MCP
+  server diagnostic, as three read-only tools: evaluate an allowlisted
+  Streamable HTTP endpoint and return its score and failing checks, verify
+  a scout attestation offline, and report the versions in use. It sends no
+  credentials and never lets scout invoke a mutating tool.
+keywords:
+  - model-context-protocol
+  - mcp
+  - mcp-server
+  - diagnostics
+  - golang
+license: GPL-3.0-only
