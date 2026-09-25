@@ -100,6 +100,13 @@ jobs:
         if: steps.edit.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional. A pull request opened with GITHUB_TOKEN triggers no
+          # workflows, so its checks never start until someone closes and
+          # reopens it. A fine-grained token with pull-requests: write on
+          # this repository, stored as SYNC_TOKEN, opens it as a user and the
+          # checks run. The commits stay GITHUB_TOKEN's: signed by GitHub and
+          # authored by the bot the DCO check exempts.
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
           VERSION: ${{ steps.rel.outputs.version }}
           REPO: ${{ github.repository }}
         run: |
@@ -115,6 +122,12 @@ jobs:
               -f message="chore: pin the scout ${VERSION} image in ${f}" \
               -f content="$(base64 -w0 "${f}")" -f sha="${sha}" -f branch="${branch}" >/dev/null
           done
-          gh pr create --base main --head "${branch}" \
+          if [[ -n "${SYNC_TOKEN}" ]]; then
+            pr_token="${SYNC_TOKEN}"
+          else
+            pr_token="${GH_TOKEN}"
+            echo "::notice::SYNC_TOKEN is not set: the pull request is opened with GITHUB_TOKEN, so close and reopen it to start its checks"
+          fi
+          GH_TOKEN="${pr_token}" gh pr create --base main --head "${branch}" \
             --title "chore: sync with scout ${VERSION}" \
             --body "Opened by the sync workflow on scout's release dispatch. Builds on scout's ${VERSION} image by digest, moves every install line and the registry listing to ${VERSION}, and opens the changelog section. CI's digest and lockstep checks are the review."

@@ -82,6 +82,13 @@ scout's, on a `feat/vX.Y.Z` branch:
    calling it done, then publish the registry listing:
    [docs/publishing.md](docs/publishing.md).
 
+Steps 1 and 2 are what `.github/workflows/sync.yml` does on scout's
+release dispatch: it opens a pull request that makes both edits. With a
+`SYNC_TOKEN` secret, a fine-grained token with `pull-requests: write` on
+this repository, that pull request's checks start on their own; without
+it, close and reopen the pull request to start them, because one opened
+with `GITHUB_TOKEN` triggers no workflows.
+
 ## Conventions
 
 - Stdout is the MCP transport; nothing else is written there.
