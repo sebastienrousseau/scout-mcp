@@ -63,8 +63,8 @@ image carries it. `scout_verify_attestation` needs nothing but scout-mcp.
 ### As a Go program
 
 ```sh
-go install github.com/sebastienrousseau/scout-mcp/cmd/scout-mcp@v0.0.5
-go install github.com/sebastienrousseau/scout/cmd/scout@v0.0.5
+go install github.com/sebastienrousseau/scout-mcp/cmd/scout-mcp@v0.0.6
+go install github.com/sebastienrousseau/scout/cmd/scout@v0.0.6
 ```
 
 Release binaries for Linux, macOS and Windows on amd64 and arm64 are on
@@ -74,7 +74,7 @@ with signed checksums and SLSA provenance.
 ### As a container image
 
 ```sh
-docker pull ghcr.io/sebastienrousseau/scout-mcp:0.0.5
+docker pull ghcr.io/sebastienrousseau/scout-mcp:0.0.6
 ```
 
 The image is scout's own release image with scout-mcp added: distroless,
@@ -105,7 +105,7 @@ With the container image instead:
   "mcpServers": {
     "scout": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "ghcr.io/sebastienrousseau/scout-mcp:0.0.5"]
+      "args": ["run", "-i", "--rm", "ghcr.io/sebastienrousseau/scout-mcp:0.0.6"]
     }
   }
 }
@@ -139,8 +139,8 @@ patch release like everything else pre-1.0, and the changelog says so.
 ## Quick Start
 
 ```sh
-go install github.com/sebastienrousseau/scout-mcp/cmd/scout-mcp@v0.0.5
-go install github.com/sebastienrousseau/scout/cmd/scout@v0.0.5
+go install github.com/sebastienrousseau/scout-mcp/cmd/scout-mcp@v0.0.6
+go install github.com/sebastienrousseau/scout/cmd/scout@v0.0.6
 claude mcp add scout -- scout-mcp
 ```
 
