@@ -3,7 +3,7 @@
   "name": "io.github.sebastienrousseau/scout-mcp",
   "title": "scout",
   "description": "Evaluate an MCP server with scout and verify scout attestations, from inside the agent. Read-only.",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "repository": {
     "url": "https://github.com/sebastienrousseau/scout-mcp",
     "source": "github"
@@ -12,7 +12,7 @@
   "packages": [
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/sebastienrousseau/scout-mcp:0.0.5",
+      "identifier": "ghcr.io/sebastienrousseau/scout-mcp:0.0.6",
       "runtimeHint": "docker",
       "transport": {
         "type": "stdio"
