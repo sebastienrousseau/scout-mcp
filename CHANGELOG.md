@@ -15,6 +15,17 @@ here with nothing in it is the version rule working.
 
 ## [Unreleased]
 
+### Changed
+
+- **The sync pull request can start its own checks.** A pull request
+  opened with `GITHUB_TOKEN` triggers no workflows, so every sync pull
+  request needed a manual close and reopen before CI ran. With a
+  `SYNC_TOKEN` secret, a fine-grained token with `pull-requests: write` on
+  this repository, the workflow opens the pull request with it and the
+  checks start. The commits are still made with `GITHUB_TOKEN`, so they
+  stay GitHub-signed and exempt from the DCO check as the bot's. Without
+  the secret nothing changes, and the run log says to close and reopen.
+
 ## [0.0.6] — 2026-09-25
 
 ### Changed
