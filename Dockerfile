@@ -16,8 +16,8 @@
 # scripts/verify-release-versions.sh refuses a release where it and the
 # tag disagree; move it and the digest together. To resolve the digest:
 #   docker buildx imagetools inspect ghcr.io/sebastienrousseau/scout:<version>
-ARG SCOUT_VERSION=0.0.6
-FROM ghcr.io/sebastienrousseau/scout@sha256:d7b69bd815514e1dd86bb06b6eeffaf4b66d3b9e8e89ea4edb84ffa5c1b81b39
+ARG SCOUT_VERSION=0.0.7
+FROM ghcr.io/sebastienrousseau/scout@sha256:43034d2a0f36b28e3d227335fb19a59e09cd556ee3075f9bcadb5dee9995c32b
 
 ARG SCOUT_VERSION
 ARG TARGETPLATFORM
