@@ -15,6 +15,14 @@ here with nothing in it is the version rule working.
 
 ## [Unreleased]
 
+### Added
+
+- **Shell completions.** `scout-mcp --completion bash|zsh|fish` prints a
+  completion script generated from the flag set, so a new flag completes
+  without a second list to maintain. `--scout` completes file names and
+  `--completion` the shell names. `make completions` writes all three to
+  `build/completions` and syntax-checks them, and CI runs it.
+
 ### Changed
 
 - **A manual, an architecture page and a template README.** The docs

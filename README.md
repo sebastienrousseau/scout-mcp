@@ -266,10 +266,19 @@ everything returns the first 25 failures and says it truncated.
 | `--allow` | `SCOUT_MCP_ALLOW` | empty: loopback only | Hosts `scout_check` may evaluate besides loopback, comma-separated; a leading dot allows subdomains |
 | `--scout` | `SCOUT_MCP_SCOUT` | `scout` on `PATH` | Path of the scout program |
 | `--version` | — | — | Print the version and exit |
+| `--completion` | — | — | Print a completion script for `bash`, `zsh` or `fish`, and exit |
 
 A flag overrides its environment variable. Nothing else is read: scout
 itself runs with an empty configuration file, whatever the operator's own
 scout configuration says.
+
+Shell completions come from the flag set, so they list every flag:
+
+```sh
+scout-mcp --completion bash > /etc/bash_completion.d/scout-mcp
+scout-mcp --completion zsh > "${fpath[1]}/_scout-mcp"
+scout-mcp --completion fish > ~/.config/fish/completions/scout-mcp.fish
+```
 
 ---
 
