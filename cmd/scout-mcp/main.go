@@ -42,8 +42,12 @@ func run(ctx context.Context, args []string, in io.Reader, out, errw io.Writer) 
 	allow := fs.String("allow", os.Getenv("SCOUT_MCP_ALLOW"), "hosts scout may be pointed at besides loopback, comma-separated; a leading dot allows subdomains")
 	scoutPath := fs.String("scout", os.Getenv("SCOUT_MCP_SCOUT"), "path of the scout program; empty means scout on PATH")
 	version := fs.Bool("version", false, "print the version and exit")
+	completion := fs.String("completion", "", "print a completion script for bash, zsh or fish, and exit")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *completion != "" {
+		return writeCompletion(out, fs, *completion)
 	}
 	if *version {
 		_, err := fmt.Fprintln(out, "scout-mcp", Version)

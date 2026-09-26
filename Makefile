@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-only
 
-.PHONY: all build test test-race coverage vet lint format spdx-check smoke digest \
-        server-json image lockstep family help
+.PHONY: all build test test-race coverage vet lint format spdx-check smoke digest readme-check \
+        server-json image lockstep family completions help
 
 # Every gate CI runs that needs no network, in the order the cheap ones fail
 # first.
@@ -13,6 +13,17 @@ build:
 
 test:
 	go test ./... -cover
+
+# Shell completions, generated from the flag set by the binary itself, into
+# build/completions. bash is syntax-checked here; zsh and fish when present.
+completions:
+	mkdir -p build/completions
+	go run ./cmd/scout-mcp --completion bash > build/completions/scout-mcp.bash
+	go run ./cmd/scout-mcp --completion zsh > build/completions/_scout-mcp
+	go run ./cmd/scout-mcp --completion fish > build/completions/scout-mcp.fish
+	bash -n build/completions/scout-mcp.bash
+	if command -v zsh >/dev/null; then zsh -n build/completions/_scout-mcp; fi
+	if command -v fish >/dev/null; then fish -n build/completions/scout-mcp.fish; fi
 
 test-race:
 	go test -race -shuffle=on -count=1 ./...
@@ -31,6 +42,11 @@ lint:
 
 format:
 	gofmt -l -w .
+
+# The README follows the portfolio template: headings in order, no
+# unresolved {{VARIABLES}} (AGENTS.md §7.3).
+readme-check:
+	scripts/readme-check.sh
 
 spdx-check:
 	go run ./scripts/spdx_sweep.go

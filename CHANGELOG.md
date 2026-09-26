@@ -15,8 +15,22 @@ here with nothing in it is the version rule working.
 
 ## [Unreleased]
 
+### Added
+
+- **Shell completions.** `scout-mcp --completion bash|zsh|fish` prints a
+  completion script generated from the flag set, so a new flag completes
+  without a second list to maintain. `--scout` completes file names and
+  `--completion` the shell names. `make completions` writes all three to
+  `build/completions` and syntax-checks them, and CI runs it.
+
 ### Changed
 
+- **A manual, an architecture page and a template README.** The docs
+  are built with MkDocs from scout's hash-locked requirements, strictly on
+  every pull request, and deployed to GitHub Pages from main.
+  `ARCHITECTURE.md` explains why the server runs the scout program instead
+  of linking it, and what is fixed on every run. The README follows the
+  portfolio template, which `scripts/readme-check.sh` now enforces in CI.
 - **The sync pull request can start its own checks.** A pull request
   opened with `GITHUB_TOKEN` triggers no workflows, so every sync pull
   request needed a manual close and reopen before CI ran. With a

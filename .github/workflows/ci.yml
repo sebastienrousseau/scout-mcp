@@ -161,6 +161,10 @@ jobs:
         env:
           GOTOOLCHAIN: auto
         run: make smoke
+      - name: Shell completions generate and parse
+        env:
+          GOTOOLCHAIN: auto
+        run: make completions
       - name: server.json validates against the registry schema it names
         run: make server-json CHECK_JSONSCHEMA='pipx run check-jsonschema'
       - name: This repository's row in the family manifest is true
