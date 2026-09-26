@@ -15,6 +15,12 @@ here with nothing in it is the version rule working.
 
 ## [Unreleased]
 
+## [0.0.7] — 2026-09-26
+
+### Changed
+
+- **In lockstep with scout 0.0.7.** The image builds on `ghcr.io/sebastienrousseau/scout@sha256:43034d2a0f36b28e3d227335fb19a59e09cd556ee3075f9bcadb5dee9995c32b`, the multi-arch image scout's release published for 0.0.7, and every install line and the registry listing name the release. Opened by the sync workflow on the release's dispatch; scout's own changelog says what changed in the diagnostic.
+
 ### Added
 
 - **Shell completions.** `scout-mcp --completion bash|zsh|fish` prints a
@@ -110,6 +116,7 @@ The first release, in lockstep with scout 0.0.5.
   tree; CI now runs the same evaluation on every push and fails below 90
   or on any other failing check.
 
-[Unreleased]: https://github.com/sebastienrousseau/scout-mcp/compare/v0.0.6...HEAD
+[Unreleased]: https://github.com/sebastienrousseau/scout-mcp/compare/v0.0.7...HEAD
+[0.0.7]: https://github.com/sebastienrousseau/scout-mcp/releases/tag/v0.0.7
 [0.0.6]: https://github.com/sebastienrousseau/scout-mcp/releases/tag/v0.0.6
 [0.0.5]: https://github.com/sebastienrousseau/scout-mcp/releases/tag/v0.0.5
