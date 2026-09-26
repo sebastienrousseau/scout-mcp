@@ -83,13 +83,35 @@ jobs:
               if p.get("registryType") == "oci":
                   p["identifier"] = re.sub(r":[0-9.]+$", ":" + ver, p["identifier"])
           open("server.json", "w").write(json.dumps(s, indent=2) + "\n")
+          def release_changelog(c, ver, today, bullet):
+              """Open the section for ver above the unreleased entries, with the
+              lockstep bullet first under ### Changed: merged into an existing
+              Changed list, or a new one placed in Keep a Changelog's order."""
+              head = "## [Unreleased]\n"
+              start = c.index(head) + len(head)
+              nxt = re.search(r"(?m)^## \[", c[start:])
+              end = start + nxt.start() if nxt else len(c)
+              pending = c[start:end].strip("\n")
+              parts = re.split(r"(?m)^### ", pending)
+              lead, blocks = parts[0].strip("\n"), {}
+              for part in parts[1:]:
+                  name, _, body = part.partition("\n")
+                  name, body = name.strip(), body.strip("\n")
+                  blocks[name] = (blocks[name] + "\n" + body) if name in blocks else body
+              blocks["Changed"] = bullet + ("\n" + blocks["Changed"] if blocks.get("Changed") else "")
+              canon = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"]
+              names = sorted(blocks, key=lambda n: canon.index(n) if n in canon else len(canon))
+              body = "\n\n".join(f"### {n}\n\n{blocks[n]}" for n in names)
+              section = f"## [{ver}] — {today}\n\n" + (lead + "\n\n" if lead else "") + body + "\n\n"
+              c = c[:start] + "\n" + section + c[end:]
+              return re.sub(r"\[Unreleased\]: (.*)/compare/v[0-9.]+\.\.\.HEAD",
+                            rf"[Unreleased]: \1/compare/v{ver}...HEAD\n[{ver}]: \1/releases/tag/v{ver}", c)
           c = open("CHANGELOG.md").read()
-          entry = (f"## [{ver}] — {today}\n\n### Changed\n\n- **In lockstep with scout {ver}.** The image builds on "
+          bullet = (f"- **In lockstep with scout {ver}.** The image builds on "
                    f"`ghcr.io/sebastienrousseau/scout@{digest}`, the multi-arch image scout's release published for {ver}, and every "
                    "install line and the registry listing name the release. Opened by the sync workflow on the release's dispatch; "
-                   "scout's own changelog says what changed in the diagnostic.\n\n")
-          c = c.replace("## [Unreleased]\n\n", "## [Unreleased]\n\n" + entry, 1)
-          c = re.sub(r"\[Unreleased\]: (.*)/compare/v[0-9.]+\.\.\.HEAD", rf"[Unreleased]: \1/compare/v{ver}...HEAD\n[{ver}]: \1/releases/tag/v{ver}", c)
+                   "scout's own changelog says what changed in the diagnostic.")
+          c = release_changelog(c, ver, today, bullet)
           open("CHANGELOG.md", "w").write(c)
           PY
           scripts/verify-release-versions.sh "${VERSION}"
