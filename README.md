@@ -5,7 +5,7 @@
   <img src="https://raw.githubusercontent.com/sebastienrousseau/scout/main/.github/logo.svg" alt="scout-mcp logo" width="128" />
 </p>
 
-<h1 align="center"><a id="scout-mcp"></a>scout-mcp</h1>
+<h1 align="center">scout-mcp</h1>
 
 <p align="center">
   scout, the Model Context Protocol server diagnostic, as MCP tools — so an agent can evaluate a server, or check an attestation about one, from inside the editor. Read-only, allowlisted, and it never sends a credential.
@@ -30,9 +30,9 @@
 - [Requirements](#requirements) — scout itself, and the Go floor to build from source
 - [Quick Start](#quick-start) — ask the agent to evaluate a local server
 
-**The scout ecosystem**
+**The scout-mcp ecosystem**
 
-- [The scout ecosystem](#the-scout-ecosystem) — `scout`, `scout-reporting`, `scout-action`, `scout-mcp`, `scout-lsp`, `scout-census` at a glance
+- [The scout-mcp ecosystem](#the-scout-mcp-ecosystem) — `scout`, `scout-reporting`, `scout-action`, `scout-mcp`, `scout-lsp`, `scout-census` at a glance
 
 **Reference**
 
@@ -157,7 +157,7 @@ named with `--allow` first.
 
 ---
 
-## The scout ecosystem
+## The scout-mcp ecosystem
 
 One engine, three surfaces, five satellites. This repository is the
 distribution surface: its deliverable is a registry listing, so scout is
@@ -406,4 +406,4 @@ the program it runs. It uses the Apache-2.0
 [scout-reporting](https://github.com/sebastienrousseau/scout-reporting)
 verifier for attestations.
 
-<p align="right"><a href="#scout-mcp">Back to Top</a></p>
+<p align="right"><a href="#contents">Back to Top</a></p>

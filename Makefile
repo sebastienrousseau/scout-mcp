@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-only
 
-.PHONY: all build test test-race coverage vet lint format spdx-check smoke digest \
+.PHONY: all build test test-race coverage vet lint format spdx-check smoke digest readme-check \
         server-json image lockstep family help
 
 # Every gate CI runs that needs no network, in the order the cheap ones fail
@@ -31,6 +31,11 @@ lint:
 
 format:
 	gofmt -l -w .
+
+# The README follows the portfolio template: headings in order, no
+# unresolved {{VARIABLES}} (AGENTS.md §7.3).
+readme-check:
+	scripts/readme-check.sh
 
 spdx-check:
 	go run ./scripts/spdx_sweep.go

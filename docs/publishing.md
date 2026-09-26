@@ -3,7 +3,7 @@
 
 # Publishing the registry listing
 
-[`server.json`](../server.json) lists scout-mcp in the
+[`server.json`](https://github.com/sebastienrousseau/scout-mcp/blob/main/server.json) lists scout-mcp in the
 [official MCP Registry](https://registry.modelcontextprotocol.io) as
 `io.github.sebastienrousseau/scout-mcp`, pointing at the container image.
 It is published by hand, after the release, because it needs the
